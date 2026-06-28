@@ -1,50 +1,44 @@
 const std = @import("std");
 
+const pieces = [_]struct { name: []const u8, src: []const u8 }{
+    .{ .name = "dots", .src = "src/dots.zig" },
+    .{ .name = "intersectingLines", .src = "src/intersectingLines.zig" },
+};
+
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    const exe = b.addExecutable(.{
-        .name = "zart",
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("src/main.zig"),
-            .target = target,
-            .optimize = optimize,
-        }),
-    });
+    const raylib_dep = b.dependency("raylib_zig", .{ .target = target, .optimize = optimize });
+    const raylib = raylib_dep.module("raylib");
+    const raylib_artifact = raylib_dep.artifact("raylib");
 
-    const raylib_dep = b.dependency("raylib_zig", .{
+    const zart = b.createModule(.{
+        .root_source_file = b.path("src/zart.zig"),
         .target = target,
         .optimize = optimize,
     });
+    zart.addImport("raylib", raylib);
 
-    const raylib = raylib_dep.module("raylib"); // main raylib module
-    const raygui = raylib_dep.module("raygui"); // raygui module
-    const raylib_artifact = raylib_dep.artifact("raylib"); // raylib C library
+    for (pieces) |piece| {
+        const exe = b.addExecutable(.{
+            .name = piece.name,
+            .root_module = b.createModule(.{
+                .root_source_file = b.path(piece.src),
+                .target = target,
+                .optimize = optimize,
+            }),
+        });
+        exe.root_module.linkLibrary(raylib_artifact);
+        exe.root_module.addImport("raylib", raylib);
+        exe.root_module.addImport("zart", zart);
+        b.installArtifact(exe);
 
-    exe.root_module.linkLibrary(raylib_artifact);
-    exe.root_module.addImport("raylib", raylib);
-    exe.root_module.addImport("raygui", raygui);
+        const run_cmd = b.addRunArtifact(exe);
+        run_cmd.step.dependOn(b.getInstallStep());
+        if (b.args) |args| run_cmd.addArgs(args);
 
-    b.installArtifact(exe);
-
-    const run_step = b.step("run", "Run the app");
-
-    const run_cmd = b.addRunArtifact(exe);
-    run_step.dependOn(&run_cmd.step);
-
-    run_cmd.step.dependOn(b.getInstallStep());
-
-    if (b.args) |args| {
-        run_cmd.addArgs(args);
+        const run_step = b.step(b.fmt("run-{s}", .{piece.name}), b.fmt("Run {s}", .{piece.name}));
+        run_step.dependOn(&run_cmd.step);
     }
-
-    const exe_tests = b.addTest(.{
-        .root_module = exe.root_module,
-    });
-
-    const run_exe_tests = b.addRunArtifact(exe_tests);
-
-    const test_step = b.step("test", "Run tests");
-    test_step.dependOn(&run_exe_tests.step);
 }
