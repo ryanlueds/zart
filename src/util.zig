@@ -38,6 +38,12 @@ pub fn hexToColor(hex: []const u8) rl.Color {
     };
 }
 
-pub fn sampleArray(comptime T: type, buf: []T, r: Random) T {
-    return buf[r.uintAtMost(usize, buf.len)];
+pub fn sampleBuffer(comptime T: type, buffer: []const T, rnd: Random) T {
+    std.debug.assert(buffer.len > 0);
+    return buffer[rnd.uintAtMost(usize, buffer.len - 1)];
+}
+
+pub fn sampleBufferMutable(comptime T: type, buffer: []T, rnd: Random) *T {
+    std.debug.assert(buffer.len > 0);
+    return &buffer[rnd.uintAtMost(usize, buffer.len - 1)];
 }
