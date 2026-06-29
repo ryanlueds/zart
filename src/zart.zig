@@ -5,6 +5,9 @@ const Random = std.Random;
 pub const width = 2560;
 pub const height = 1664;
 
+// pub const width = 5120;
+// pub const height = 1440;
+
 pub const palettes = [_][5][]const u8{
     .{ "#de9151", "#f34213", "#2e2e3a", "#bc5d2e", "#bbb8b2" },
     .{ "#a63446", "#fbfef9", "#0c6291", "#000004", "#7e1946" },
@@ -57,7 +60,7 @@ fn lumaLess(_: void, a: rl.Color, b: rl.Color) bool {
     return luma(a) < luma(b);
 }
 
-// A palette padded with black/white and sorted dark to light, for ramp lookups.
+// A palette padded with black/white and sorted dark to light
 pub fn buildAnchors(seed: u32) [7]rl.Color {
     const palette = palettes[seed % palettes.len];
     var anchors: [7]rl.Color = undefined;
@@ -151,6 +154,16 @@ pub fn colorize(values: []const f32, out: [*]rl.Color, anchors: []const rl.Color
         const color = rampColor(anchors, rank / denom);
         for (order[i..j]) |p| out[p] = color;
         i = j;
+    }
+}
+
+pub fn tonemap(values: []const f32, out: [*]rl.Color, anchors: []const rl.Color, gamma: f32) void {
+    var max: f32 = 0;
+    for (values) |v| max = @max(max, v);
+    const inv: f32 = if (max > 0) 1.0 / @log(1.0 + max) else 0;
+    for (values, 0..) |v, idx| {
+        const t = std.math.pow(f32, @log(1.0 + v) * inv, gamma);
+        out[idx] = rampColor(anchors, t);
     }
 }
 

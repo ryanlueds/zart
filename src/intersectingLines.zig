@@ -8,12 +8,12 @@ const scale_px = @min(width, height);
 
 const layers = 20;
 const iterations = 30_000_000;
-const zoom = 0.06;
-const alpha = 0.5;
+const zoom = 0.10;
 const blur_radius = 2;
+const gamma = 1.7;
 
-const seed_start = 100;
-const seed_end = 120;
+const seed_start = 300;
+const seed_end = 399;
 const image_count = seed_end - seed_start;
 
 const Variant = enum {
@@ -135,7 +135,7 @@ fn rasterData(values: []f32, rnd: std.Random, progress: *zart.Progress) void {
             const ci: usize = @intFromFloat(col);
             const ri: usize = @intFromFloat(row);
             const idx = ri * width + ci;
-            values[idx] = alpha * z + (1 - alpha) * values[idx];
+            values[idx] += 1;
         }
 
         x_old = x;
@@ -158,7 +158,7 @@ fn drawImage(seed: u32, gpa: std.mem.Allocator, progress: *zart.Progress) !rl.Im
     const image = rl.genImageColor(width, height, rl.Color.black);
     const data: [*]rl.Color = @ptrCast(@alignCast(image.data));
     const anchors = zart.buildAnchors(seed);
-    try zart.colorize(values, data, &anchors, gpa);
+    zart.tonemap(values, data, &anchors, gamma);
     return image;
 }
 
